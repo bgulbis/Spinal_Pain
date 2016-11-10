@@ -2,9 +2,12 @@
 library(tidyverse)
 library(readxl)
 
-# manual fixes
+# manual fixes for Demog tab
 # - removed linebreaks from all column names
 # - converted text to number; column BG
+# - fix duplicate column names: X, Y, Z, AE, AH, AI, AJ, AL, AN, AO, AP, AQ, AU, AV, AW, AY, AZ, BA, BB, BH, BJ, BK
+#   * Note, need to remove data validation: AI
+# - remove 25 null columns
 
 data_file <- "2016-10-28_data.xlsx"
 
@@ -24,3 +27,7 @@ nm <- c("patient", "vital_datetime", "vital", "vital_result", "amt_time",
             "location", "num_uncontrolled", "num_bps")
 types <- c("text", "date", "text", "numeric", "text", "text", "numeric", "numeric")
 vitals <- read_excel(data_file, "Vitals", col_names = nm, col_types = types, skip = 1)
+
+data_tidy <- demograph %>%
+    select(1:9, 11:14, 16:21)
+
