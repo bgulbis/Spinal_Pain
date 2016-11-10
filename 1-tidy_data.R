@@ -16,6 +16,9 @@ nm <- c("patient", "category", "med", "dose_route", "freq", "location",
         "rr")
 types <- c(rep("text", 6), rep("date", 2), "numeric", rep("text", 5), "numeric", "text")
 meds <- read_excel(data_file, "Medications", col_names = nm, col_types = types, skip = 1)
+    # separate("dose_route", c("dose", "units", "route"), sep = " ")
+
+# - convert text to number; vital signs
 
 nm <- c("patient", "vital_datetime", "vital", "vital_result", "amt_time",
             "location", "num_uncontrolled", "num_bps")
