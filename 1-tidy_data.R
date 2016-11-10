@@ -10,7 +10,12 @@ data_file <- "2016-10-28_data.xlsx"
 
 demograph <- read_excel(data_file, "Demog")
 
-meds <- read_excel(data_file, "Medications")
+nm <- c("patient", "category", "med", "dose_route", "freq", "location",
+        "admin_datetime", "stop_datetime", "num_meds", "before_proc",
+        "after_proc", "before_nv", "anti_nv_hrs", "anti_nv_or", "num_anti_nv",
+        "rr")
+types <- c(rep("text", 6), rep("date", 2), "numeric", rep("text", 5), "numeric", "text")
+meds <- read_excel(data_file, "Medications", col_names = nm, col_types = types, skip = 1)
 
 nm <- c("patient", "vital_datetime", "vital", "vital_result", "amt_time",
             "location", "num_uncontrolled", "num_bps")
