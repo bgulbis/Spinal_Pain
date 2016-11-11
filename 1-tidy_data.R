@@ -1,6 +1,7 @@
 
 library(tidyverse)
 library(readxl)
+library(stringr)
 
 # manual fixes for Demog tab
 # - removed linebreaks from all column names
@@ -31,3 +32,13 @@ vitals <- read_excel(data_file, "Vitals", col_names = nm, col_types = types, ski
 data_tidy <- demograph %>%
     select(1:9, 11:14, 16:21)
 
+names(data_tidy) <- str_to_lower(names(data_tidy))
+names(data_tidy) <- str_replace_all(names(data_tidy), " \\(.*\\)", "")
+names(data_tidy) <- str_replace_all(names(data_tidy), "date/time", "datetime")
+names(data_tidy) <- str_replace_all(names(data_tidy), "date/", "")
+names(data_tidy) <- str_replace_all(names(data_tidy), " ", "_")
+
+data_tidy <- data_tidy %>%
+    rename(num_pain_meds = number__of_pain_meds_used,
+           weight = wt,
+           height = ht)
