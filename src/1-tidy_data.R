@@ -22,7 +22,7 @@ nm <- c("patient", "category", "med", "dose_route", "freq", "location",
         "rr")
 types <- c("numeric", rep("text", 5), rep("date", 2), "numeric", rep("text", 5), "numeric", "text")
 meds <- read_excel(data_file, "Medications", col_names = nm, col_types = types, skip = 1) %>%
-    dmap_at(c("category", "med"), str_trim, side = "both") %>%
+    dmap_at(c("category", "med", "location"), str_trim, side = "both") %>%
     dmap_at("med", str_to_lower) %>%
     dmap_at("med", str_replace_all, pattern = "ondandetron", replacement = "ondansetron") %>%
     dmap_at("med", str_replace_all, pattern = "faotidine", replacement = "famotidine") %>%
@@ -107,6 +107,12 @@ data_sedation <- demograph %>%
 data_hypotension <- demograph %>%
     select(patient = Patient, 59:63)
 
+data_uncontrolled <- vitals %>%
+    left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
+    filter(vital == "BPS") %>%
+    arrange(patient, vital_datetime) %>%
+    group_by(patient)
+
 data_bps <- vitals %>%
     left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
     filter(vital == "BPS") %>%
@@ -131,7 +137,7 @@ data_bps_postop <- vitals %>%
 
 data_painmeds <- meds %>%
     left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
-    filter(category %in% c("APAP", "Opiod", "Combo product", "NSAID"),
+    filter(category %in% c("APAP", "Opioid", "Combo product", "NSAID"),
            admin_datetime >= surgery_stop,
            admin_datetime <= surgery_stop + hours(24)) %>%
     group_by(patient) %>%
@@ -154,13 +160,19 @@ data_antinv_intraop <- meds %>%
     summarize(num_anti_emetics_intraop = n())
 
 data_painmeds_nv <- meds %>%
-    filter(category %in% c("APAP", "Opiod", "Combo product", "NSAID")) %>%
+    filter(category %in% c("APAP", "Opioid", "Combo product", "NSAID")) %>%
     dmap_at("before_nv", ~ .x == "Nausea") %>%
     dmap_at("before_nv", ~ coalesce(.x, FALSE)) %>%
     group_by(med) %>%
     summarize(total = n(),
               nausea = sum(before_nv),
               nausea_prct = sum(before_nv) / n())
+
+data_painmeds_pacu <- meds %>%
+    filter(category %in% c("APAP", "Opioid", "Combo product", "NSAID"),
+           location == "PACU") %>%
+    group_by(med) %>%
+    summarize(painmed_pacu = n())
 
 data_tidy <- data_tidy %>%
     left_join(data_bps_postop, by = "patient") %>%
