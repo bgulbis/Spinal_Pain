@@ -25,7 +25,8 @@ meds <- read_excel(data_file, "Medications", col_names = nm, col_types = types, 
     dmap_at(c("category", "med"), str_trim, side = "both") %>%
     dmap_at("med", str_to_lower) %>%
     dmap_at("med", str_replace_all, pattern = "ondandetron", replacement = "ondansetron") %>%
-    dmap_at("med", str_replace_all, pattern = "faotidine", replacement = "famotidine")
+    dmap_at("med", str_replace_all, pattern = "faotidine", replacement = "famotidine") %>%
+    dmap_at("before_nv", str_replace_all, pattern = "N/V", replacement = "Nausea")
 
     # separate("dose_route", c("dose", "units", "route"), sep = " ")
 
@@ -152,6 +153,15 @@ data_antinv_intraop <- meds %>%
     group_by(patient) %>%
     summarize(num_anti_emetics_intraop = n())
 
+data_painmeds_nv <- meds %>%
+    filter(category %in% c("APAP", "Opiod", "Combo product", "NSAID")) %>%
+    dmap_at("before_nv", ~ .x == "Nausea") %>%
+    dmap_at("before_nv", ~ coalesce(.x, FALSE)) %>%
+    group_by(med) %>%
+    summarize(total = n(),
+              nausea = sum(before_nv),
+              nausea_prct = sum(before_nv) / n())
+
 data_tidy <- data_tidy %>%
     left_join(data_bps_postop, by = "patient") %>%
     left_join(data_bps, by = "patient") %>%
@@ -160,3 +170,5 @@ data_tidy <- data_tidy %>%
     left_join(data_antinv_postop, by = "patient") %>%
     mutate(anti_emetic_intraop_postop = if_else(!is.na(num_anti_emetics_intraop), !is.na(num_anti_emetics_postop_24h), NA))
 
+write_csv(data_tidy, "data/tidy/main_analysis.csv")
+write_csv(data_painmeds_nv, "data/tidy/pain_meds_nausea.csv")
