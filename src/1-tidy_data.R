@@ -42,3 +42,26 @@ data_tidy <- data_tidy %>%
     rename(num_pain_meds = number__of_pain_meds_used,
            weight = wt,
            height = ht)
+
+data_pmh <- demograph %>%
+    select(patient = Patient, starts_with("PMH-")) %>%
+    dmap_if(is.character, ~ .x == "Yes")
+
+names(data_pmh) <- str_replace_all(names(data_pmh), "PMH-|\\(.*\\)", "")
+names(data_pmh) <- str_replace_all(names(data_pmh), " |/", "_")
+names(data_pmh) <- str_to_lower(names(data_pmh))
+
+data_tidy <- left_join(data_tidy, data_pmh, by = "patient")
+
+data_home_med <- demograph %>%
+    select(patient = Patient, starts_with("Home med ")) %>%
+    mutate(home_gabapentin = `Home med Gabapentin/Pregabalin` == "Gabapentin",
+           home_pregabalin = `Home med Gabapentin/Pregabalin` == "Pregabalin") %>%
+    select(-`Home med Gabapentin/Pregabalin`) %>%
+    dmap_if(is.character, ~ .x == "Yes")
+
+names(data_home_med) <- str_replace_all(names(data_home_med), " med| \\+", "")
+names(data_home_med) <- str_replace_all(names(data_home_med), " ", "_")
+names(data_home_med) <- str_to_lower(names(data_home_med))
+
+data_tidy <- left_join(data_tidy, data_home_med, by = "patient")
