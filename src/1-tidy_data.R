@@ -112,7 +112,8 @@ data_bps <- vitals %>%
     arrange(patient, vital_datetime) %>%
     group_by(patient) %>%
     mutate(pain_duration = as.numeric(difftime(vital_datetime, first(vital_datetime), units = "hours"))) %>%
-    summarize(bps_auc = auc(pain_duration, vital_result),
+    summarize(bps_num = n(),
+              bps_auc = auc(pain_duration, vital_result),
               bps_duration = last(pain_duration)) %>%
     mutate(bps_wt_avg_all = bps_auc / bps_duration)
 
