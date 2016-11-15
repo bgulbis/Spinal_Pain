@@ -108,10 +108,24 @@ data_hypotension <- demograph %>%
     select(patient = Patient, 59:63)
 
 data_uncontrolled <- vitals %>%
-    left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
+    left_join(data_tidy[c("patient", "surgery_start", "surgery_stop")], by = "patient") %>%
     filter(vital == "BPS") %>%
     arrange(patient, vital_datetime) %>%
-    group_by(patient)
+    group_by(patient) %>%
+    mutate(uncontrolled = vital_result > 6 & (lead(vital_result) > 6 | lag(vital_result > 6)),
+           duration = as.numeric(difftime(lead(vital_datetime), vital_datetime, units = "hours")),
+           duration = coalesce(duration, 0.1),
+           diff_pain = uncontrolled & (uncontrolled != lag(uncontrolled) | is.na(lag(uncontrolled))),
+           pain_num = cumsum(diff_pain))
+
+data_uncontrolled_sum <- data_uncontrolled %>%
+    filter(uncontrolled) %>%
+    group_by(patient, pain_num) %>%
+    summarize(uncontrol_duration = sum(duration, na.rm = TRUE))
+
+data_uncontrolled_instances <- data_uncontrolled_sum %>%
+    group_by(patient) %>%
+    summarize(num_uncontrolled = n())
 
 data_bps <- vitals %>%
     left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
@@ -177,6 +191,8 @@ data_painmeds_pacu <- meds %>%
 data_tidy <- data_tidy %>%
     left_join(data_bps_postop, by = "patient") %>%
     left_join(data_bps, by = "patient") %>%
+    left_join(data_uncontrolled_instances, by = "patient") %>%
+    dmap_at("num_uncontrolled", ~ coalesce(.x, 0L)) %>%
     left_join(data_painmeds, by = "patient") %>%
     left_join(data_antinv_intraop, by = "patient") %>%
     left_join(data_antinv_postop, by = "patient") %>%
