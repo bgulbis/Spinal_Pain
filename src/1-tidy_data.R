@@ -121,11 +121,13 @@ data_uncontrolled <- vitals %>%
 data_uncontrolled_sum <- data_uncontrolled %>%
     filter(uncontrolled) %>%
     group_by(patient, pain_num) %>%
-    summarize(uncontrol_duration = sum(duration, na.rm = TRUE))
+    summarize(uncontrol_duration = sum(duration, na.rm = TRUE),
+              location = first(location))
 
 data_uncontrolled_instances <- data_uncontrolled_sum %>%
     group_by(patient) %>%
-    summarize(num_uncontrolled = n())
+    summarize(num_uncontrolled = n(),
+              uncontrolled_location = first(location))
 
 data_bps <- vitals %>%
     left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
