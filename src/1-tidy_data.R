@@ -104,6 +104,16 @@ data_hypotension <- demograph %>%
 
 data_bps <- vitals %>%
     left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
+    filter(vital == "BPS") %>%
+    arrange(patient, vital_datetime) %>%
+    group_by(patient) %>%
+    mutate(pain_duration = as.numeric(difftime(vital_datetime, first(vital_datetime), units = "hours"))) %>%
+    summarize(bps_auc = auc(pain_duration, vital_result),
+              bps_duration = last(pain_duration)) %>%
+    mutate(bps_wt_avg_all = bps_auc / bps_duration)
+
+data_bps_postop <- vitals %>%
+    left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
     filter(vital == "BPS",
            vital_datetime <= surgery_stop + hours(24)) %>%
     arrange(patient, vital_datetime) %>%
@@ -122,5 +132,6 @@ data_painmeds <- meds %>%
     summarize(num_painmeds_postop_24h = n())
 
 data_tidy <- data_tidy %>%
+    left_join(data_bps_postop, by = "patient") %>%
     left_join(data_bps, by = "patient") %>%
     left_join(data_painmeds, by = "patient")
