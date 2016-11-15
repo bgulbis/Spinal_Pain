@@ -137,14 +137,24 @@ data_painmeds <- meds %>%
 
 data_antinv_postop <- meds %>%
     left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
-    filter(med %in% c("ondansetron", "promethazie"),
+    filter(med %in% c("ondansetron", "promethazine"),
            admin_datetime >= surgery_stop,
            admin_datetime <= surgery_stop + hours(24)) %>%
     group_by(patient) %>%
     summarize(num_anti_emetics_postop_24h = n())
 
+data_antinv_intraop <- meds %>%
+    left_join(data_tidy[c("patient", "surgery_start", "surgery_stop")], by = "patient") %>%
+    filter(med %in% c("ondansetron", "promethazine"),
+           admin_datetime >= surgery_start,
+           admin_datetime <= surgery_stop) %>%
+    group_by(patient) %>%
+    summarize(num_anti_emetics_intraop = n())
+
 data_tidy <- data_tidy %>%
     left_join(data_bps_postop, by = "patient") %>%
     left_join(data_bps, by = "patient") %>%
     left_join(data_painmeds, by = "patient") %>%
-    left_join(data_antinv_postop, by = "patient")
+    left_join(data_antinv_intraop, by = "patient") %>%
+    left_join(data_antinv_postop, by = "patient") %>%
+    mutate(anti_emetic_intraop_postop = if_else(!is.na(num_anti_emetics_intraop), !is.na(num_anti_emetics_postop_24h), NA))
