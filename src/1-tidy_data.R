@@ -30,7 +30,7 @@ types <- c("text", "date", "text", "numeric", "text", "text", "numeric", "numeri
 vitals <- read_excel(data_file, "Vitals", col_names = nm, col_types = types, skip = 1)
 
 data_tidy <- demograph %>%
-    select(1:9, 11:14, 16:21)
+    select(1:9, 11:14, 16:21, 64)
 
 names(data_tidy) <- str_to_lower(names(data_tidy))
 names(data_tidy) <- str_replace_all(names(data_tidy), " \\(.*\\)", "")
@@ -41,7 +41,11 @@ names(data_tidy) <- str_replace_all(names(data_tidy), " ", "_")
 data_tidy <- data_tidy %>%
     rename(num_pain_meds = number__of_pain_meds_used,
            weight = wt,
-           height = ht)
+           height = ht,
+           med_allergies = `medication_allergies_to_meds_currently_taking?`) %>%
+    mutate(length_stay = as.numeric(difftime(discharge_datetime, admission_datetime, units = "days")),
+           surgery_duration = as.numeric(difftime(surgery_stop, surgery_start, units = "hours")),
+           pacu_duration = as.numeric(difftime(pacu_end, pacu_start, units = "hours")))
 
 data_pmh <- demograph %>%
     select(patient = Patient, starts_with("PMH-")) %>%
@@ -65,3 +69,30 @@ names(data_home_med) <- str_replace_all(names(data_home_med), " ", "_")
 names(data_home_med) <- str_to_lower(names(data_home_med))
 
 data_tidy <- left_join(data_tidy, data_home_med, by = "patient")
+
+data_adverse <- demograph %>%
+    select(patient = Patient, starts_with("AE")) %>%
+    dmap_if(is.character, ~ .x == "Yes") %>%
+    rename(adv_eff_nausea_vomiting = `AE N/V requiring anti-emetic`)
+
+names(data_adverse) <- str_replace_all(names(data_adverse), "AE", "adv_eff")
+names(data_adverse) <- str_replace_all(names(data_adverse), " ", "_")
+names(data_adverse) <- str_to_lower(names(data_adverse))
+
+data_tidy <- left_join(data_tidy, data_adverse, by = "patient")
+
+# there was no cardiac arrest data
+data_arrest <- demograph %>%
+    select(patient = Patient, 24:31)
+
+# there was minimal respiratory distress data
+data_distress <- demograph %>%
+    select(patient = Patient, 33:43)
+
+# there was no sedation data
+data_sedation <- demograph %>%
+    select(patient = Patient, 45:55)
+
+# there was minimal hypotension data
+data_hypotension <- demograph %>%
+    select(patient = Patient, 59:63)
