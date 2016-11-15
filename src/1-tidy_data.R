@@ -21,7 +21,8 @@ nm <- c("patient", "category", "med", "dose_route", "freq", "location",
         "after_proc", "before_nv", "anti_nv_hrs", "anti_nv_or", "num_anti_nv",
         "rr")
 types <- c("numeric", rep("text", 5), rep("date", 2), "numeric", rep("text", 5), "numeric", "text")
-meds <- read_excel(data_file, "Medications", col_names = nm, col_types = types, skip = 1)
+meds <- read_excel(data_file, "Medications", col_names = nm, col_types = types, skip = 1) %>%
+    dmap_at("category", str_trim, side = "both")
     # separate("dose_route", c("dose", "units", "route"), sep = " ")
 
 # - convert text to number; vital signs
@@ -112,5 +113,15 @@ data_bps <- vitals %>%
               pain_duration = last(pain_duration)) %>%
     mutate(pain_wt_avg_postop_24h = pain_auc / pain_duration)
 
+data_painmeds <- meds %>%
+    left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
+    filter(category %in% c("APAP", "Opiod", "Combo product", "NSAID"),
+           admin_datetime >= surgery_stop,
+           admin_datetime <= surgery_stop + hours(24)) %>%
+    group_by(patient) %>%
+    summarize(num_painmeds_postop_24h = n())
+
 data_tidy <- data_tidy %>%
-    left_join(data_bps, by = "patient")
+    left_join(data_bps, by = "patient") %>%
+    left_join(data_painmeds, by = "patient")
+
