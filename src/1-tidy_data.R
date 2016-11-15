@@ -124,4 +124,3 @@ data_painmeds <- meds %>%
 data_tidy <- data_tidy %>%
     left_join(data_bps, by = "patient") %>%
     left_join(data_painmeds, by = "patient")
-
