@@ -107,9 +107,11 @@ data_sedation <- demograph %>%
 data_hypotension <- demograph %>%
     select(patient = Patient, 59:63)
 
-data_uncontrolled <- vitals %>%
+data_uncontrolled_postop <- vitals %>%
     left_join(data_tidy[c("patient", "surgery_start", "surgery_stop")], by = "patient") %>%
-    filter(vital == "BPS") %>%
+    filter(vital == "BPS",
+           vital_datetime >= surgery_stop,
+           vital_datetime <= surgery_stop + hours(24)) %>%
     arrange(patient, vital_datetime) %>%
     group_by(patient) %>%
     mutate(uncontrolled = vital_result > 6 & (lead(vital_result) > 6 | lag(vital_result > 6)),
@@ -118,16 +120,15 @@ data_uncontrolled <- vitals %>%
            diff_pain = uncontrolled & (uncontrolled != lag(uncontrolled) | is.na(lag(uncontrolled))),
            pain_num = cumsum(diff_pain))
 
-data_uncontrolled_sum <- data_uncontrolled %>%
+data_uncontrolled_postop_sum <- data_uncontrolled %>%
     filter(uncontrolled) %>%
     group_by(patient, pain_num) %>%
     summarize(uncontrol_duration = sum(duration, na.rm = TRUE),
-              location = first(location))
-
-data_uncontrolled_instances <- data_uncontrolled_sum %>%
+              location = first(location)) %>%
     group_by(patient) %>%
-    summarize(num_uncontrolled = n(),
-              uncontrolled_location = first(location))
+    summarize(num_uncontrolled_postop = n(),
+              uncontrolled_location_postop = first(location),
+              uncontrolled_duration_postop = sum(uncontrol_duration))
 
 data_bps <- vitals %>%
     left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
@@ -193,9 +194,10 @@ data_painmeds_pacu <- meds %>%
 data_tidy <- data_tidy %>%
     left_join(data_bps_postop, by = "patient") %>%
     left_join(data_bps, by = "patient") %>%
-    left_join(data_uncontrolled_instances, by = "patient") %>%
-    dmap_at("num_uncontrolled", ~ coalesce(.x, 0L)) %>%
-    mutate(home_opioid_uncontrolled = if_else(home_opioid, num_uncontrolled > 0, NA)) %>%
+    left_join(data_uncontrolled_postop_sum, by = "patient") %>%
+    dmap_at("num_uncontrolled_postop", ~ coalesce(.x, 0L)) %>%
+    mutate(home_opioid_uncontrolled_postop = if_else(home_opioid, num_uncontrolled_postop > 0, NA),
+           uncontrolled_postop_prct = uncontrolled_duration_postop / pain_duration) %>%
     left_join(data_painmeds, by = "patient") %>%
     left_join(data_antinv_intraop, by = "patient") %>%
     left_join(data_antinv_postop, by = "patient") %>%
