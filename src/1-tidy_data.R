@@ -10,7 +10,7 @@ library(stringr)
 #   * Note, need to remove data validation: AI
 # - remove 25 null columns
 
-data_file <- "2016-10-28_data.xlsx"
+data_file <- "data/raw/2016-10-28_data.xlsx"
 
 demograph <- read_excel(data_file, "Demog")
 
