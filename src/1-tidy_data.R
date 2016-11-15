@@ -2,6 +2,8 @@
 library(tidyverse)
 library(readxl)
 library(stringr)
+library(lubridate)
+library(MESS)
 
 # manual fixes for Demog tab
 # - removed linebreaks from all column names
@@ -18,7 +20,7 @@ nm <- c("patient", "category", "med", "dose_route", "freq", "location",
         "admin_datetime", "stop_datetime", "num_meds", "before_proc",
         "after_proc", "before_nv", "anti_nv_hrs", "anti_nv_or", "num_anti_nv",
         "rr")
-types <- c(rep("text", 6), rep("date", 2), "numeric", rep("text", 5), "numeric", "text")
+types <- c("numeric", rep("text", 5), rep("date", 2), "numeric", rep("text", 5), "numeric", "text")
 meds <- read_excel(data_file, "Medications", col_names = nm, col_types = types, skip = 1)
     # separate("dose_route", c("dose", "units", "route"), sep = " ")
 
@@ -26,8 +28,10 @@ meds <- read_excel(data_file, "Medications", col_names = nm, col_types = types, 
 
 nm <- c("patient", "vital_datetime", "vital", "vital_result", "amt_time",
             "location", "num_uncontrolled", "num_bps")
-types <- c("text", "date", "text", "numeric", "text", "text", "numeric", "numeric")
-vitals <- read_excel(data_file, "Vitals", col_names = nm, col_types = types, skip = 1)
+types <- c("numeric", "date", "text", "numeric", "text", "text", "numeric", "numeric")
+vitals <- read_excel(data_file, "Vitals", col_names = nm, col_types = types, skip = 1) %>%
+    filter(!is.na(vital)) %>%
+    dmap_at("vital", str_trim, side = "both")
 
 data_tidy <- demograph %>%
     select(1:9, 11:14, 16:21, 64)
@@ -96,3 +100,17 @@ data_sedation <- demograph %>%
 # there was minimal hypotension data
 data_hypotension <- demograph %>%
     select(patient = Patient, 59:63)
+
+data_bps <- vitals %>%
+    left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
+    filter(vital == "BPS",
+           vital_datetime <= surgery_stop + hours(24)) %>%
+    arrange(patient, vital_datetime) %>%
+    group_by(patient) %>%
+    mutate(pain_duration = as.numeric(difftime(vital_datetime, first(vital_datetime), units = "hours"))) %>%
+    summarize(pain_auc = auc(pain_duration, vital_result),
+              pain_duration = last(pain_duration)) %>%
+    mutate(pain_wt_avg_postop_24h = pain_auc / pain_duration)
+
+data_tidy <- data_tidy %>%
+    left_join(data_bps, by = "patient")
