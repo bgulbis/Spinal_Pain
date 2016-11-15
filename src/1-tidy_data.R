@@ -193,6 +193,7 @@ data_tidy <- data_tidy %>%
     left_join(data_bps, by = "patient") %>%
     left_join(data_uncontrolled_instances, by = "patient") %>%
     dmap_at("num_uncontrolled", ~ coalesce(.x, 0L)) %>%
+    mutate(home_opioid_uncontrolled = if_else(home_opioid, num_uncontrolled > 0, NA)) %>%
     left_join(data_painmeds, by = "patient") %>%
     left_join(data_antinv_intraop, by = "patient") %>%
     left_join(data_antinv_postop, by = "patient") %>%
