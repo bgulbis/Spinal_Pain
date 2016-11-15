@@ -144,6 +144,7 @@ data_bps <- vitals %>%
 data_bps_postop <- vitals %>%
     left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
     filter(vital == "BPS",
+           vital_datetime > surgery_stop,
            vital_datetime <= surgery_stop + hours(24)) %>%
     arrange(patient, vital_datetime) %>%
     group_by(patient) %>%
@@ -191,6 +192,37 @@ data_painmeds_pacu <- meds %>%
     group_by(med) %>%
     summarize(painmed_pacu = n())
 
+data_score <- vitals %>%
+    left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
+    filter(vital == "BPS",
+           vital_datetime > surgery_stop,
+           vital_datetime <= surgery_stop + hours(24)) %>%
+    arrange(patient, vital_datetime) %>%
+    select(patient, datetime = vital_datetime, event = vital, result = vital_result)
+
+data_med <- meds %>%
+    left_join(data_tidy[c("patient", "surgery_stop")], by = "patient") %>%
+    filter(category %in% c("APAP", "Opioid", "Combo product", "NSAID"),
+           admin_datetime > surgery_stop,
+           admin_datetime <= surgery_stop + hours(24)) %>%
+    arrange(patient, admin_datetime) %>%
+    select(patient, datetime = admin_datetime, event = med, result = NA_integer_)
+
+data_meds_scores <- bind_rows(data_score, data_med) %>%
+    arrange(patient, datetime) %>%
+    mutate(med = if_else(result >= 8, lead(event), if_else(result <= 3, lead(event), NA_character_))) %>%
+    dmap_at("med", str_replace_all, pattern = "BPS", replacement = "none")
+
+data_med_pain_high <- data_meds_scores %>%
+    filter(result >= 8) %>%
+    group_by(med) %>%
+    summarize(num = n())
+
+data_med_pain_low <- data_meds_scores %>%
+    filter(result <= 3) %>%
+    group_by(med) %>%
+    summarize(num = n())
+
 data_tidy <- data_tidy %>%
     left_join(data_bps_postop, by = "patient") %>%
     left_join(data_bps, by = "patient") %>%
@@ -205,3 +237,5 @@ data_tidy <- data_tidy %>%
 
 write_csv(data_tidy, "data/tidy/main_analysis.csv")
 write_csv(data_painmeds_nv, "data/tidy/pain_meds_nausea.csv")
+write_csv(data_med_pain_high, "data/tidy/meds_high_pain.csv")
+write_csv(data_med_pain_low, "data/tidy/meds_low_pain.csv")
