@@ -159,3 +159,4 @@ data_tidy <- data_tidy %>%
     left_join(data_antinv_intraop, by = "patient") %>%
     left_join(data_antinv_postop, by = "patient") %>%
     mutate(anti_emetic_intraop_postop = if_else(!is.na(num_anti_emetics_intraop), !is.na(num_anti_emetics_postop_24h), NA))
+
